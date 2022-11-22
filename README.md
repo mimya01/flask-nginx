@@ -26,7 +26,55 @@ server {
                 uwsgi_pass unix:/var/www/app.sock;                                                                            
         }                                                                                                                                                                                                                                                      
 }                                                                                                      
+### Nginx config with php too
+server {
+        listen 443 default_server;
+        listen [::]:443 default_server;
 
+        root /var/www/html;
+
+        index index.html index.php index.htm index.nginx-debian.html;
+
+        server_name  ocr.eca-assurances.com;
+        ssl                  on;
+        ssl_certificate      /home/telcrm.pem.cer;
+        ssl_certificate_key  /home/telcrm-key.pkey;
+
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
+
+        location / {
+                root /var/www/ai-doc/client/dist;
+                proxy_read_timeout 120s;
+
+                try_files $uri $uri/ /index.html;
+        }
+
+        location /maarch-file {
+                location ~ \.php$ {
+                       include snippets/fastcgi-php.conf;
+                       include fastcgi_params;
+                       fastcgi_pass unix:/run/php/php7.3-fpm.sock;
+                       fastcgi_send_timeout 300;
+                       fastcgi_read_timeout 300;
+                }
+                root /var/www/ai-doc;
+                try_files $uri $uri/ =404;
+        }
+
+        location /api {
+                include uwsgi_params;
+                client_max_body_size 100M;
+                client_body_timeout 300s;
+                uwsgi_pass unix:/var/www/ai-doc/api/app.sock;
+                uwsgi_read_timeout 300s;
+
+                #proxy_buffers 8 32k;
+                #proxy_buffer_size 64k;
+    }
+
+}
 
 ### App service config
 
